@@ -10,7 +10,6 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-
 from app.database import get_db
 from app.models.source import Article, Source
 from app.models.post import PostIdea, PostStatus
