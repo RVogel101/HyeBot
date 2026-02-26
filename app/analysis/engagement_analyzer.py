@@ -22,16 +22,19 @@ MIN_POSTS_FOR_PATTERN = 5            # Minimum samples to derive a pattern
 
 
 def _posts_to_df(posts: list[RedditPost]) -> pd.DataFrame:
-    return pd.DataFrame([
-        {
+    # coerce potential Column objects to plain types before calculations
+    rows = []
+    for p in posts:
+        title = str(p.title or "")
+        rows.append({
             "id": p.id,
-            "subreddit": p.subreddit,
-            "title": p.title,
+            "subreddit": str(p.subreddit or ""),
+            "title": title,
             "score": p.score,
             "upvote_ratio": p.upvote_ratio,
             "num_comments": p.num_comments,
-            "title_length": p.title_length or len(p.title),
-            "title_word_count": p.title_word_count or len(p.title.split()),
+            "title_length": p.title_length or len(title),
+            "title_word_count": p.title_word_count or len(title.split()),
             "has_question": bool(p.has_question),
             "has_numbers": bool(p.has_numbers),
             "sentiment_score": p.sentiment_score or 0.0,
@@ -39,9 +42,8 @@ def _posts_to_df(posts: list[RedditPost]) -> pd.DataFrame:
             "flair": p.flair or "",
             "engagement_score": p.engagement_score or p.score,
             "created_utc": p.created_utc,
-        }
-        for p in posts
-    ])
+        })
+    return pd.DataFrame(rows)
 
 
 def _title_structure(title: str) -> str:
@@ -168,9 +170,9 @@ def _upsert_single_pattern(db: Session, subreddit: str, ptype: str, value: str, 
         subreddit=subreddit, pattern_type=ptype, pattern_value=str(value)
     ).first()
     if existing:
-        existing.avg_score = avg_score
-        existing.sample_count = count
-        existing.last_updated = datetime.now(_UTC)
+        existing.avg_score = avg_score  # type: ignore[assignment]
+        existing.sample_count = count  # type: ignore[assignment]
+        existing.last_updated = datetime.now(_UTC)  # type: ignore[assignment]
     else:
         db.add(EngagementPattern(
             subreddit=subreddit,
