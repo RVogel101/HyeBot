@@ -2,6 +2,7 @@
 All API routes — dashboard stats, scraping controls, post idea CRUD,
 A/B test management, Reddit data collection, and engagement analysis.
 """
+import logging
 import os
 from datetime import datetime, UTC
 from typing import Optional
@@ -25,6 +26,7 @@ from app.ab_testing.ab_framework import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 TARGET_SUBREDDIT = os.getenv("TARGET_SUBREDDIT", "armenia")
 
@@ -303,16 +305,28 @@ def post_ab_variants(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
-    """Post all draft variants in this A/B test to Reddit."""
+    """Post all draft variants in this A/B test to Reddit (sequentially with delays)."""
     test = db.query(ABTest).filter_by(id=test_id).first()
     if not test:
         raise HTTPException(status_code=404, detail="A/B test not found")
     draft_variants = [v for v in test.variants if v.status == "draft"]
     if not draft_variants:
         return {"message": "No draft variants to post."}
-    for variant in draft_variants:
-        background_tasks.add_task(post_variant_to_reddit, db, variant)
-    return {"message": f"Posting {len(draft_variants)} variants in background."}
+
+    # Post variants sequentially in a single background task with delays
+    # to comply with Reddit rate limits and spam prevention
+    def _post_variants_sequentially():
+        import time
+        for i, variant in enumerate(draft_variants):
+            post_variant_to_reddit(db, variant)
+            # Wait between variant posts (skip delay after last one)
+            if i < len(draft_variants) - 1:
+                delay = int(os.getenv("POSTING_COOLDOWN_SECONDS", "600"))
+                logger.info(f"[A/B] Waiting {delay}s before posting next variant…")
+                time.sleep(delay)
+
+    background_tasks.add_task(_post_variants_sequentially)
+    return {"message": f"Posting {len(draft_variants)} variants sequentially in background (with cooldown delays)."}
 
 
 @router.post("/ab-tests/{test_id}/refresh-metrics")
@@ -421,6 +435,8 @@ def list_reddit_posts(
                 "score": p.score,
                 "upvote_ratio": p.upvote_ratio,
                 "num_comments": p.num_comments,
+                "author": p.author,
+                "permalink": f"https://reddit.com/r/{p.subreddit}/comments/{p.reddit_post_id}" if p.reddit_post_id is not None else None,
                 "post_type": p.post_type,
                 "has_question": p.has_question,
                 "has_numbers": p.has_numbers,
