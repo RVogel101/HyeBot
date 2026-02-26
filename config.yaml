@@ -63,6 +63,51 @@ scraping:
       type: rss
       category: diaspora
 
+  # International / regional sources (keyword-filtered for Armenian content)
+  international_sources:
+    - name: "Google News - Armenia"
+      url: "https://news.google.com"
+      rss: "https://news.google.com/rss/search?q=Armenia+OR+Armenian+OR+Artsakh+OR+Karabakh&hl=en-US&gl=US&ceid=US:en"
+      type: rss_filtered
+      category: international
+      region: global
+    - name: "Al Jazeera (Armenian)"
+      url: "https://www.aljazeera.com"
+      rss: "https://www.aljazeera.com/xml/rss/all.xml"
+      type: rss_filtered
+      category: international
+      region: middle_east
+    - name: "Al-Monitor (Armenian)"
+      url: "https://www.al-monitor.com"
+      rss: "https://www.al-monitor.com/rss"
+      type: rss_filtered
+      category: international
+      region: middle_east
+    - name: "BBC World (Armenian)"
+      url: "https://www.bbc.co.uk/news/world"
+      rss: "https://feeds.bbci.co.uk/news/world/rss.xml"
+      type: rss_filtered
+      category: international
+      region: global
+    - name: "France 24 (Armenian)"
+      url: "https://www.france24.com/en/"
+      rss: "https://www.france24.com/en/rss"
+      type: rss_filtered
+      category: international
+      region: eu
+    - name: "Deutsche Welle (Armenian)"
+      url: "https://www.dw.com/en/"
+      rss: "https://rss.dw.com/xml/rss-en-world"
+      type: rss_filtered
+      category: international
+      region: eu
+    - name: "Euronews (Armenian)"
+      url: "https://www.euronews.com"
+      rss: "https://www.euronews.com/rss"
+      type: rss_filtered
+      category: international
+      region: eu
+
   # History & academic sources
   history_sources:
     - name: "Hyestart"
