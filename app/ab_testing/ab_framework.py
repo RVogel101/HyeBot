@@ -85,22 +85,27 @@ def post_variant_to_reddit(
 
     try:
         reddit = _get_reddit_client()
-        subreddit = reddit.subreddit(post_idea.target_subreddit)
+        # ensure plain strings are passed to PRAW
+        subreddit_name = str(post_idea.target_subreddit) if post_idea.target_subreddit is not None else ""
+        subreddit = reddit.subreddit(subreddit_name)
 
-        if post_idea.post_type == "link" and post_idea.source_url:
+        post_type: str = str(post_idea.post_type) if post_idea.post_type is not None else ""
+        source_url: Optional[str] = str(post_idea.source_url) if post_idea.source_url is not None else None
+
+        if post_type == "link" and source_url:
             submission = subreddit.submit(
-                title=variant.title,
-                url=post_idea.source_url,
+                title=str(variant.title),
+                url=source_url,
             )
         else:
             submission = subreddit.submit(
-                title=variant.title,
-                selftext=variant.body or "",
+                title=str(variant.title),
+                selftext=str(variant.body) if variant.body is not None else "",
             )
 
-        variant.reddit_post_id = submission.id
-        variant.posted_at = datetime.now(UTC)
-        variant.status = "live"
+        variant.reddit_post_id = submission.id  # type: ignore[assignment]
+        variant.posted_at = datetime.now(UTC)  # type: ignore[assignment]
+        variant.status = "live"  # type: ignore[assignment]
         db.commit()
         logger.info(f"[A/B] Posted variant {variant.variant_label} → reddit ID {submission.id}")
         return True
@@ -116,22 +121,26 @@ def post_idea_to_reddit(db: Session, post_idea: PostIdea) -> bool:
     """
     try:
         reddit = _get_reddit_client()
-        subreddit = reddit.subreddit(post_idea.target_subreddit)
+        subreddit_name = str(post_idea.target_subreddit) if post_idea.target_subreddit is not None else ""
+        subreddit = reddit.subreddit(subreddit_name)
 
-        if post_idea.post_type == "link" and post_idea.source_url:
+        post_type: str = str(post_idea.post_type) if post_idea.post_type is not None else ""
+        source_url: Optional[str] = str(post_idea.source_url) if post_idea.source_url is not None else None
+
+        if post_type == "link" and source_url:
             submission = subreddit.submit(
-                title=post_idea.title,
-                url=post_idea.source_url,
+                title=str(post_idea.title),
+                url=source_url,
             )
         else:
             submission = subreddit.submit(
-                title=post_idea.title,
-                selftext=post_idea.body or "",
+                title=str(post_idea.title),
+                selftext=str(post_idea.body) if post_idea.body is not None else "",
             )
 
-        post_idea.reddit_post_id = submission.id
-        post_idea.posted_at = datetime.now(UTC)
-        post_idea.status = PostStatus.posted
+        post_idea.reddit_post_id = submission.id  # type: ignore[assignment]
+        post_idea.posted_at = datetime.now(UTC)  # type: ignore[assignment]
+        post_idea.status = PostStatus.posted  # type: ignore[assignment]
 
         # Create performance tracking row
         perf = PostPerformance(
@@ -147,7 +156,7 @@ def post_idea_to_reddit(db: Session, post_idea: PostIdea) -> bool:
 
     except Exception as exc:
         db.rollback()
-        post_idea.status = PostStatus.failed
+        post_idea.status = PostStatus.failed  # type: ignore[assignment]
         db.commit()
         logger.error(f"[Post] Failed to post idea #{post_idea.id}: {exc}", exc_info=True)
         return False
@@ -162,7 +171,7 @@ def refresh_variant_metrics(db: Session, test: ABTest) -> None:
     """
     reddit = _get_reddit_client()
     for variant in test.variants:
-        if variant.status != "live" or not variant.reddit_post_id:
+        if variant.status != "live" or variant.reddit_post_id is None:
             continue
         try:
             submission = reddit.submission(id=variant.reddit_post_id)
@@ -190,21 +199,21 @@ def refresh_post_performance(db: Session, reddit_post_id: str) -> Optional[PostP
         submission = reddit.submission(id=reddit_post_id)
         now = datetime.now(UTC)
 
-        if perf.first_checked_at:
+        if perf.first_checked_at is not None:
             elapsed_hours = (now - perf.first_checked_at).total_seconds() / 3600
             if elapsed_hours < 2:
-                perf.score_at_1h = submission.score
+                perf.score_at_1h = submission.score  # type: ignore[assignment]
             elif elapsed_hours < 8:
-                perf.score_at_6h = submission.score
+                perf.score_at_6h = submission.score  # type: ignore[assignment]
             elif elapsed_hours < 48:
-                perf.score_at_24h = submission.score
+                perf.score_at_24h = submission.score  # type: ignore[assignment]
             else:
-                perf.score_at_7d = submission.score
-                perf.final_score = submission.score
-                perf.final_comments = submission.num_comments
-                perf.final_upvote_ratio = submission.upvote_ratio
+                perf.score_at_7d = submission.score  # type: ignore[assignment]
+                perf.final_score = submission.score  # type: ignore[assignment]
+                perf.final_comments = submission.num_comments  # type: ignore[assignment]
+                perf.final_upvote_ratio = submission.upvote_ratio  # type: ignore[assignment]
 
-        perf.last_checked_at = now
+        perf.last_checked_at = now  # type: ignore[assignment]
         db.commit()
     except Exception as exc:
         logger.warning(f"[Performance] Metrics refresh failed: {exc}")
@@ -251,8 +260,8 @@ def analyze_test(db: Session, test: ABTest) -> dict:
     if len(variants) == 2:
         a, b = variants[0], variants[1]
         # Use engagement_rate as composite metric; fallback to score
-        a_metric = a.engagement_rate or a.score
-        b_metric = b.engagement_rate or b.score
+        a_metric = a.engagement_rate if a.engagement_rate is not None else a.score
+        b_metric = b.engagement_rate if b.engagement_rate is not None else b.score
 
         if a_metric is not None and b_metric is not None:
             # Single-point comparison (no repeated measures here); use basic comparison
@@ -265,7 +274,7 @@ def analyze_test(db: Session, test: ABTest) -> dict:
             result["better_strategy"] = winner.title_strategy
 
             # Naive significance: if one is >20% better and both have comments, call it
-            if improvement > 20 and min(a.num_comments or 0, b.num_comments or 0) >= 5:
+            if improvement > 20 and min(a.num_comments if a.num_comments is not None else 0, b.num_comments if b.num_comments is not None else 0) >= 5:
                 result["significant"] = True
                 result["p_value"] = 0.04  # Placeholder; replace with proper test
                 _conclude_test(db, test, winner.id, p_value=result["p_value"])
@@ -275,12 +284,12 @@ def analyze_test(db: Session, test: ABTest) -> dict:
 
 
 def _conclude_test(db: Session, test: ABTest, winner_variant_id: int, p_value: float) -> None:
-    test.is_active = False
-    test.concluded_at = datetime.now(UTC)
-    test.winner_variant_id = winner_variant_id
-    test.significance_achieved = True
-    test.p_value = p_value
+    test.is_active = False  # type: ignore[assignment]
+    test.concluded_at = datetime.now(UTC)  # type: ignore[assignment]
+    test.winner_variant_id = winner_variant_id  # type: ignore[assignment]
+    test.significance_achieved = True  # type: ignore[assignment]
+    test.p_value = p_value  # type: ignore[assignment]
     for v in test.variants:
-        v.status = "concluded"
+        v.status = "concluded"  # type: ignore[assignment]
     db.commit()
     logger.info(f"[A/B] Test #{test.id} concluded. Winner variant #{winner_variant_id}.")
