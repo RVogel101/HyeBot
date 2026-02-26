@@ -414,11 +414,14 @@ function renderTopPosts(posts, sub) {
   let html = `<h3 style="margin-bottom:1rem;">Top posts in r/${esc(sub)}</h3>`;
   html += `<div class="card-list">`;
   posts.forEach((p) => {
+    const permalink = p.permalink || `https://reddit.com/r/${esc(sub)}/comments/${esc(p.reddit_id)}`;
+    const author = p.author ? `u/${esc(p.author)}` : "[deleted]";
     html += `
       <div class="idea-card">
         <div>
-          <div class="idea-title">${esc(p.title)}</div>
+          <div class="idea-title"><a href="${esc(permalink)}" target="_blank" rel="noopener">${esc(p.title)}</a></div>
           <div class="idea-meta">
+            <span>by ${author}</span>
             <span>⬆ ${p.score}</span>
             <span>↑ ${(p.upvote_ratio * 100).toFixed(0)}%</span>
             <span>💬 ${p.num_comments}</span>
