@@ -5,7 +5,7 @@ extracts engagement features, and stores them for pattern analysis.
 import logging
 import os
 import re
-from datetime import datetime, UTC, timezone
+from datetime import datetime, UTC, timezone, timedelta
 from typing import Optional
 
 import praw
@@ -22,7 +22,7 @@ def _get_reddit_client() -> praw.Reddit:
         client_secret=os.getenv("REDDIT_CLIENT_SECRET"),
         username=os.getenv("REDDIT_USERNAME"),
         password=os.getenv("REDDIT_PASSWORD"),
-        user_agent=os.getenv("REDDIT_USER_AGENT", "HyeTasion/1.0"),
+        user_agent=os.getenv("REDDIT_USER_AGENT", "script:HyeTasion:1.0 (by /u/unknown)"),
     )
 
 
@@ -147,3 +147,56 @@ def update_posted_metrics(db: Session, reddit_post_id: str) -> Optional[dict]:
     except Exception as exc:
         logger.error(f"[Reddit metrics] Failed to fetch {reddit_post_id}: {exc}")
         return None
+
+
+def cleanup_deleted_posts(db: Session) -> dict:
+    """
+    Check stored Reddit posts against live Reddit data.
+    Remove local copies if the original has been deleted/removed.
+    Also purge posts older than DATA_RETENTION_DAYS.
+    Required by Reddit Developer Terms (content removal & data retention).
+    """
+    reddit = _get_reddit_client()
+    retention_days = int(os.getenv("DATA_RETENTION_DAYS", "90"))
+    cutoff = datetime.now(UTC) - timedelta(days=retention_days)
+    stats = {"deleted": 0, "expired": 0, "errors": 0}
+
+    # 1. Purge posts older than retention period
+    expired = db.query(RedditPost).filter(RedditPost.scraped_at < cutoff).all()
+    for post in expired:
+        db.delete(post)
+        stats["expired"] += 1
+    if expired:
+        db.commit()
+        logger.info(f"[Cleanup] Purged {stats['expired']} posts older than {retention_days} days.")
+
+    # 2. Check recent posts for deletion/removal on Reddit
+    recent_posts = (
+        db.query(RedditPost)
+        .filter(RedditPost.scraped_at >= cutoff)
+        .order_by(RedditPost.scraped_at.desc())
+        .limit(500)
+        .all()
+    )
+    for post in recent_posts:
+        try:
+            submission = reddit.submission(id=str(post.reddit_post_id))
+            # Access an attribute to trigger the fetch
+            _ = submission.selftext
+            # Check if post was removed or author deleted
+            if (
+                submission.selftext == "[removed]"
+                or submission.selftext == "[deleted]"
+                or submission.author is None
+                or submission.removed_by_category is not None
+            ):
+                db.delete(post)
+                stats["deleted"] += 1
+        except Exception:
+            stats["errors"] += 1
+
+    if stats["deleted"]:
+        db.commit()
+        logger.info(f"[Cleanup] Removed {stats['deleted']} deleted/removed Reddit posts.")
+
+    return stats
