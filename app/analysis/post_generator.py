@@ -101,14 +101,19 @@ def _extract_topic(article: Article) -> tuple[str, str]:
     Extract a short topic phrase and a detail phrase from an article.
     Returns (topic, detail).
     """
-    title = article.title or ""
+    # ensure we work with a plain string (SQLAlchemy attributes are typed as Any)
+    title: str = str(article.title or "")
     # Remove site name suffixes like " | Armenpress" or " - Armenian Weekly"
-    title = re.sub(r"\s*[\|\-–]\s*(armenpress|armenian weekly|asbarez|hetq|panorama|azatutyun|evn|oc media|civilnet|wikipedia).*$",
-                   "", title, flags=re.IGNORECASE)
+    title = re.sub(
+        r"\s*[\|\-–]\s*(armenpress|armenian weekly|asbarez|hetq|panorama|azatutyun|evn|oc media|civilnet|wikipedia).*$",
+        "",
+        title,
+        flags=re.IGNORECASE,
+    )
     title = title.strip()
 
     # Use the scraped summary for detail
-    summary = article.summary or ""
+    summary: str = str(article.summary or "")
     detail = summary[:120].strip() if summary else title
 
     # Truncate title to a clean topic phrase
@@ -124,7 +129,10 @@ def _get_best_structure(db: Session, subreddit: str) -> str:
         .order_by(EngagementPattern.avg_score.desc())
         .first()
     )
-    return best.pattern_value if best else "standard"
+    if best:
+        # SQLAlchemy column access returns a Column object; coerce to plain str
+        return str(best.pattern_value)
+    return "standard"
 
 
 def _get_top_keywords(db: Session, subreddit: str) -> list[str]:
@@ -136,7 +144,8 @@ def _get_top_keywords(db: Session, subreddit: str) -> list[str]:
         .limit(10)
         .all()
     )
-    return [k.pattern_value for k in kws]
+    # ensure each value is converted to a plain string
+    return [str(k.pattern_value) for k in kws]
 
 
 def _weave_keywords(title: str, keywords: list[str]) -> str:
@@ -158,14 +167,19 @@ def _weave_keywords(title: str, keywords: list[str]) -> str:
 def _generate_body(article: Article) -> str:
     """Generate Reddit post body text for self-posts."""
     parts = []
-    if article.summary:
-        parts.append(article.summary)
-    if article.url:
-        parts.append(f"\n\nSource: {article.url}")
-    tags = []
-    if article.tags:
+    # coerce columns to primitive types before truthiness tests
+    summary = str(article.summary or "")
+    url = str(article.url or "")
+    tags_field = str(article.tags or "")
+
+    if summary:
+        parts.append(summary)
+    if url:
+        parts.append(f"\n\nSource: {url}")
+    tags: list[str] = []
+    if tags_field:
         try:
-            raw_tags = json.loads(article.tags)
+            raw_tags = json.loads(tags_field)
             if isinstance(raw_tags, list):
                 tags = [str(t) for t in raw_tags[:5]]
         except Exception:
@@ -209,11 +223,14 @@ def generate_post_ideas(
         if len(ideas) >= max_ideas:
             break
 
+        # coerce some columns to plain types for later use
+        category = str(article.category or "news")
+        url = str(article.url or "")
+
         topic, detail = _extract_topic(article)
         if not topic:
             continue
 
-        category = article.category or "news"
         template = _choose_template(category, best_structure)
 
         # Fill template placeholders
@@ -237,7 +254,7 @@ def generate_post_ideas(
         seen_titles.add(norm)
 
         # Determine if this should be a link post or self-post
-        post_type = "link" if article.url else "self"
+        post_type = "link" if url else "self"
 
         body = "" if post_type == "link" else _generate_body(article)
 
@@ -256,7 +273,7 @@ def generate_post_ideas(
             body=body,
             post_type=post_type,
             target_subreddit=subreddit,
-            source_url=article.url,
+            source_url=url,
             generation_method="template",
             predicted_engagement_score=predicted_score,
             source_category=category,
@@ -264,7 +281,7 @@ def generate_post_ideas(
         db.add(idea)
 
         # Mark article as processed
-        article.is_processed = True
+        article.is_processed = True  # type: ignore[assignment]
 
         ideas.append(idea)
 
@@ -283,10 +300,17 @@ def generate_ab_variants(
     Returns a list of variant dicts (not yet persisted — the A/B framework does that).
     """
     subreddit = post_idea.target_subreddit
-    article = db.query(Article).filter_by(id=post_idea.article_id).first() if post_idea.article_id else None
+    # check for presence rather than truthiness (article_id is Column[int])
+    article = (
+        db.query(Article).filter_by(id=post_idea.article_id).first()
+        if post_idea.article_id is not None
+        else None
+    )
 
-    topic = article.title[:80] if article else post_idea.title[:80]
-    detail = (article.summary or "")[:100] if article else ""
+    # coerce attributes from article for typing
+    topic = str(article.title)[:80] if article else post_idea.title[:80]
+    detail = str(article.summary or "")[:100] if article else ""
+    category = str(article.category or "news") if article else "news"
 
     structures = list(TEMPLATES.keys())
     random.shuffle(structures)
@@ -295,10 +319,7 @@ def generate_ab_variants(
     labels = "ABCDEFGH"
     for i in range(min(num_variants, len(structures))):
         structure = structures[i]
-        template = _choose_template(
-            article.category if article else "news",
-            structure
-        )
+        template = _choose_template(category, structure)
         title = template.format(
             topic=topic,
             detail=detail or topic,
