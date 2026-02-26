@@ -1,10 +1,14 @@
 """
-Scrapers for Armenian news media sources.
+Scrapers for Armenian news media sources and international outlets.
 Covers: Armenpress, Asbarez, Armenian Weekly, Azatutyun, Hetq,
         Panorama.am, EVN Report, OC Media, Civilnet,
         Massis Post, Armenian Mirror-Spectator, Horizon Weekly, Agos.
+International (keyword-filtered):
+        Google News Armenia, Al Jazeera, Al-Monitor, BBC World,
+        France 24, Deutsche Welle, Euronews.
 """
 import logging
+import re
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import Optional
@@ -100,6 +104,63 @@ class RSSNewsScraper(BaseScraper):
             if container:
                 return self.clean_text(container.get_text(separator=" "))
         return self.clean_text(soup.body.get_text(separator=" ") if soup.body else "")
+
+
+# ---------------------------------------------------------------------------
+# Armenian keyword list — used to filter international feeds
+# ---------------------------------------------------------------------------
+
+ARMENIAN_KEYWORDS: list[str] = [
+    # Country / people
+    r"\barmenia\b", r"\barmenian[s]?\b", r"\bhay(?:astan)?\b",
+    # Cities & regions
+    r"\byerevan\b", r"\bgyumri\b", r"\bvanadzor\b",
+    # Artsakh / Karabakh
+    r"\bartsakh\b", r"\bkarabakh\b", r"\bnagorno[- ]?karabakh\b",
+    # Geopolitical actors & events
+    r"\bpashinyan\b", r"\bkocharyan\b", r"\bsargsyan\b",
+    r"\barmenian[- ]?genocide\b", r"\b1915\b.*(?:ottoman|turkey|armenian)",
+    # Diaspora & church
+    r"\barmenian[- ]?diaspora\b", r"\barmenian[- ]?apostolic\b",
+    r"\bechmiadz[iy]n\b", r"\bcatholic[ao]s\b",
+    # South Caucasus context
+    r"\bsouth[- ]?caucasus\b", r"\bcaucasus\b.*armenian",
+    # Armenian Jerusalem
+    r"\barmenian[- ]?quarter\b", r"\barmenian[- ]?patriarch",
+    r"\bjerusalem\b.*armenian",
+    r"\bcows[- ]?garden\b",
+]
+
+_ARMENIAN_PATTERN: re.Pattern[str] = re.compile(
+    "|".join(ARMENIAN_KEYWORDS), re.IGNORECASE
+)
+
+
+def _matches_armenian_keywords(text: str) -> bool:
+    """Return True if *text* contains at least one Armenian-related keyword."""
+    return bool(_ARMENIAN_PATTERN.search(text))
+
+
+class KeywordFilteredRSSScraper(RSSNewsScraper):
+    """
+    RSS scraper that **only** keeps articles matching Armenian-related
+    keywords in their title or summary.  Used for large international feeds
+    (BBC, Al Jazeera, France 24 …) where only a fraction of output is
+    relevant to the Armenian beat.
+    """
+
+    def scrape(self) -> list[ScrapedArticle]:
+        all_articles = super().scrape()
+        filtered = [
+            a for a in all_articles
+            if _matches_armenian_keywords(a.title)
+            or _matches_armenian_keywords(a.summary)
+        ]
+        logger.info(
+            f"[{self.name}] Keyword filter: {len(filtered)}/{len(all_articles)} "
+            "articles matched Armenian keywords."
+        )
+        return filtered
 
 
 # ---------------------------------------------------------------------------
@@ -232,6 +293,87 @@ class AgosScraper(RSSNewsScraper):
 
 
 # ---------------------------------------------------------------------------
+# International / regional keyword-filtered sources
+# ---------------------------------------------------------------------------
+
+class GoogleNewsArmenianScraper(RSSNewsScraper):
+    """
+    Google News pre-filtered RSS for 'Armenia OR Armenian'.
+    Already keyword-filtered by Google, so uses plain RSSNewsScraper.
+    Aggregates coverage from NYT, Jerusalem Post, Reuters, CFR, etc.
+    """
+    SOURCE_NAME = "Google News – Armenia"
+    BASE_URL = "https://news.google.com"
+    RSS_URL = (
+        "https://news.google.com/rss/search?"
+        "q=Armenia+OR+Armenian+OR+Artsakh+OR+Karabakh&hl=en-US&gl=US&ceid=US:en"
+    )
+
+    def __init__(self):
+        super().__init__(self.SOURCE_NAME, self.BASE_URL, self.RSS_URL, "international")
+
+
+class AlJazeeraScraper(KeywordFilteredRSSScraper):
+    """Al Jazeera English — Middle East focused, keyword-filtered for Armenian content."""
+    SOURCE_NAME = "Al Jazeera (Armenian)"
+    BASE_URL = "https://www.aljazeera.com"
+    RSS_URL = "https://www.aljazeera.com/xml/rss/all.xml"
+
+    def __init__(self):
+        super().__init__(self.SOURCE_NAME, self.BASE_URL, self.RSS_URL, "international")
+
+
+class AlMonitorScraper(KeywordFilteredRSSScraper):
+    """Al-Monitor — Middle East policy news, keyword-filtered for Armenian content."""
+    SOURCE_NAME = "Al-Monitor (Armenian)"
+    BASE_URL = "https://www.al-monitor.com"
+    RSS_URL = "https://www.al-monitor.com/rss"
+
+    def __init__(self):
+        super().__init__(self.SOURCE_NAME, self.BASE_URL, self.RSS_URL, "international")
+
+
+class BBCWorldScraper(KeywordFilteredRSSScraper):
+    """BBC World News — keyword-filtered for Armenian content."""
+    SOURCE_NAME = "BBC World (Armenian)"
+    BASE_URL = "https://www.bbc.co.uk/news/world"
+    RSS_URL = "https://feeds.bbci.co.uk/news/world/rss.xml"
+
+    def __init__(self):
+        super().__init__(self.SOURCE_NAME, self.BASE_URL, self.RSS_URL, "international")
+
+
+class France24Scraper(KeywordFilteredRSSScraper):
+    """France 24 English — EU/international news, keyword-filtered for Armenian content."""
+    SOURCE_NAME = "France 24 (Armenian)"
+    BASE_URL = "https://www.france24.com/en/"
+    RSS_URL = "https://www.france24.com/en/rss"
+
+    def __init__(self):
+        super().__init__(self.SOURCE_NAME, self.BASE_URL, self.RSS_URL, "international")
+
+
+class DWWorldScraper(KeywordFilteredRSSScraper):
+    """Deutsche Welle — German international broadcaster, keyword-filtered for Armenian content."""
+    SOURCE_NAME = "Deutsche Welle (Armenian)"
+    BASE_URL = "https://www.dw.com/en/"
+    RSS_URL = "https://rss.dw.com/xml/rss-en-world"
+
+    def __init__(self):
+        super().__init__(self.SOURCE_NAME, self.BASE_URL, self.RSS_URL, "international")
+
+
+class EuronewsScraper(KeywordFilteredRSSScraper):
+    """Euronews — pan-European news, keyword-filtered for Armenian content."""
+    SOURCE_NAME = "Euronews (Armenian)"
+    BASE_URL = "https://www.euronews.com"
+    RSS_URL = "https://www.euronews.com/rss"
+
+    def __init__(self):
+        super().__init__(self.SOURCE_NAME, self.BASE_URL, self.RSS_URL, "international")
+
+
+# ---------------------------------------------------------------------------
 # Registry — used by the scraping service to iterate all news sources
 # ---------------------------------------------------------------------------
 
@@ -251,4 +393,12 @@ ALL_NEWS_SCRAPERS = [
     MirrorSpectatorScraper,
     HorizonWeeklyScraper,
     AgosScraper,
+    # International / regional (keyword-filtered)
+    GoogleNewsArmenianScraper,
+    AlJazeeraScraper,
+    AlMonitorScraper,
+    BBCWorldScraper,
+    France24Scraper,
+    DWWorldScraper,
+    EuronewsScraper,
 ]
