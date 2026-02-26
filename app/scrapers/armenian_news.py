@@ -187,6 +187,51 @@ class CivilnetScraper(RSSNewsScraper):
         super().__init__(self.SOURCE_NAME, self.BASE_URL, self.RSS_URL, "culture")
 
 
+class ArmenianMirrorSpectatorScraper(RSSNewsScraper):
+    SOURCE_NAME = "Armenian Mirror-Spectator"
+    BASE_URL = "https://mirrorspectator.com"
+    RSS_URL = "https://mirrorspectator.com/feed/"
+
+    def __init__(self):
+        super().__init__(self.SOURCE_NAME, self.BASE_URL, self.RSS_URL, "news")
+
+
+class MassisPostScraper(RSSNewsScraper):
+    SOURCE_NAME = "Massis Post"
+    BASE_URL = "https://www.massispost.com"
+    RSS_URL = "https://www.massispost.com/feed/"
+
+    def __init__(self):
+        super().__init__(self.SOURCE_NAME, self.BASE_URL, self.RSS_URL, "news")
+
+
+class NewsAmScraper(RSSNewsScraper):
+    SOURCE_NAME = "News.am"
+    BASE_URL = "https://news.am/eng"
+    RSS_URL = "https://news.am/eng/rss/all.rss"
+
+    def __init__(self):
+        super().__init__(self.SOURCE_NAME, self.BASE_URL, self.RSS_URL, "news")
+
+
+class LragirScraper(RSSNewsScraper):
+    SOURCE_NAME = "Lragir.am"
+    BASE_URL = "https://www.lragir.am/en"
+    RSS_URL = "https://www.lragir.am/en/feed/"
+
+    def __init__(self):
+        super().__init__(self.SOURCE_NAME, self.BASE_URL, self.RSS_URL, "analysis")
+
+
+class MediamaxScraper(RSSNewsScraper):
+    SOURCE_NAME = "Mediamax"
+    BASE_URL = "https://mediamax.am/en"
+    RSS_URL = "https://mediamax.am/en/rss/"
+
+    def __init__(self):
+        super().__init__(self.SOURCE_NAME, self.BASE_URL, self.RSS_URL, "news")
+
+
 # ---------------------------------------------------------------------------
 # Registry — used by the scraping service to iterate all news sources
 # ---------------------------------------------------------------------------
@@ -201,4 +246,9 @@ ALL_NEWS_SCRAPERS = [
     EVNReportScraper,
     OCMediaScraper,
     CivilnetScraper,
+    ArmenianMirrorSpectatorScraper,
+    MassisPostScraper,
+    NewsAmScraper,
+    LragirScraper,
+    MediamaxScraper,
 ]

@@ -247,6 +247,103 @@ class ArmenianHistoryOnThisDay(BaseScraper):
         return articles
 
 
+class HoushamadyanScraper(BaseScraper):
+    """
+    Scrapes Houshamadyan.org — a project reconstructing the history and
+    culture of Ottoman Armenian communities; ideal for diaspora heritage posts.
+    """
+    SOURCE_NAME = "Houshamadyan"
+    BASE_URL = "https://www.houshamadyan.org"
+    SECTIONS = [
+        "https://www.houshamadyan.org/en/news.html",
+        "https://www.houshamadyan.org/en/mapottomanempire.html",
+    ]
+
+    def __init__(self):
+        super().__init__(self.SOURCE_NAME, self.BASE_URL)
+
+    def scrape(self) -> list[ScrapedArticle]:
+        articles: list[ScrapedArticle] = []
+        for section_url in self.SECTIONS:
+            resp = self.fetch(section_url)
+            if not resp:
+                continue
+            soup = self.parse_html(resp.text)
+            for tag in soup.find_all(["nav", "footer", "script", "style"]):
+                tag.decompose()
+            for a_tag in soup.find_all("a", href=True):
+                href = a_tag["href"]
+                text = self.clean_text(a_tag.get_text())
+                if len(text) < 15 or len(text) > 300:
+                    continue
+                url = href if href.startswith("http") else self.BASE_URL + href
+                if self.BASE_URL.split("//")[1].split("/")[0] not in url:
+                    continue
+                articles.append(
+                    ScrapedArticle(
+                        title=text,
+                        url=url,
+                        summary="",
+                        published_at=datetime.now(UTC),
+                        category="history",
+                        tags=["history", "armenia", "diaspora", "ottoman"],
+                    )
+                )
+                if len(articles) >= 20:
+                    break
+            if len(articles) >= 20:
+                break
+
+        logger.info(f"[{self.SOURCE_NAME}] Collected {len(articles)} heritage links.")
+        return articles
+
+
+class ArmenianGenocideMuseumScraper(BaseScraper):
+    """
+    Scrapes the Armenian Genocide Museum-Institute (agmi.am) news and
+    publications for genocide recognition and remembrance content.
+    """
+    SOURCE_NAME = "Armenian Genocide Museum-Institute"
+    BASE_URL = "https://www.genocide-museum.am"
+    NEWS_URL = "https://www.genocide-museum.am/eng/news.php"
+
+    def __init__(self):
+        super().__init__(self.SOURCE_NAME, self.BASE_URL)
+
+    def scrape(self) -> list[ScrapedArticle]:
+        resp = self.fetch(self.NEWS_URL)
+        if not resp:
+            return []
+        soup = self.parse_html(resp.text)
+        for tag in soup.find_all(["nav", "footer", "script", "style"]):
+            tag.decompose()
+
+        articles: list[ScrapedArticle] = []
+        for a_tag in soup.find_all("a", href=True):
+            href = a_tag["href"]
+            text = self.clean_text(a_tag.get_text())
+            if len(text) < 15 or len(text) > 300:
+                continue
+            url = href if href.startswith("http") else self.BASE_URL + "/" + href.lstrip("/")
+            if self.BASE_URL.split("//")[1].split("/")[0] not in url:
+                continue
+            articles.append(
+                ScrapedArticle(
+                    title=text,
+                    url=url,
+                    summary="",
+                    published_at=datetime.now(UTC),
+                    category="history",
+                    tags=["armenian genocide", "history", "recognition", "armenia"],
+                )
+            )
+            if len(articles) >= 20:
+                break
+
+        logger.info(f"[{self.SOURCE_NAME}] Collected {len(articles)} items.")
+        return articles
+
+
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
@@ -256,4 +353,6 @@ ALL_HISTORY_SCRAPERS = [
     HyestartScraper,
     ArmenianStudiesAcademicScraper,
     ArmenianHistoryOnThisDay,
+    HoushamadyanScraper,
+    ArmenianGenocideMuseumScraper,
 ]

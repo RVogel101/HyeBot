@@ -41,6 +41,31 @@ scraping:
       rss: "https://oc-media.org/feed/"
       type: rss
       category: news
+    - name: "Armenian Mirror-Spectator"
+      url: "https://mirrorspectator.com"
+      rss: "https://mirrorspectator.com/feed/"
+      type: rss
+      category: news
+    - name: "Massis Post"
+      url: "https://www.massispost.com"
+      rss: "https://www.massispost.com/feed/"
+      type: rss
+      category: news
+    - name: "News.am"
+      url: "https://news.am/eng"
+      rss: "https://news.am/eng/rss/all.rss"
+      type: rss
+      category: news
+    - name: "Lragir.am"
+      url: "https://www.lragir.am/en"
+      rss: "https://www.lragir.am/en/feed/"
+      type: rss
+      category: analysis
+    - name: "Mediamax"
+      url: "https://mediamax.am/en"
+      rss: "https://mediamax.am/en/rss/"
+      type: rss
+      category: news
 
   # History & academic sources
   history_sources:
@@ -61,10 +86,19 @@ scraping:
       rss: "https://www.civilnet.am/en/feed/"
       type: rss
       category: culture
+    - name: "Houshamadyan"
+      url: "https://www.houshamadyan.org"
+      type: html
+      category: history
+    - name: "Armenian Genocide Museum-Institute"
+      url: "https://www.genocide-museum.am/eng/news.php"
+      type: html
+      category: history
 
 reddit:
   # Subreddits to scrape for engagement analysis
   analysis_subreddits:
+    - ArmeniansGlobal
     - armenia
     - hayastan
     - armenianhistory

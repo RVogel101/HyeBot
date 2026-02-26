@@ -8,7 +8,7 @@ Scrapes Armenian news media and history journals, analyzes Reddit engagement pat
 
 ## Features
 
-- **Multi-source scraping** — Armenian news (Armenpress, Asbarez, Armenian Weekly, Hetq, etc.) and history sources (Wikipedia, academic portals)
+- **Multi-source scraping** — Armenian news (Armenpress, Asbarez, Armenian Weekly, Hetq, Mirror-Spectator, Massis Post, News.am, Lragir, Mediamax, etc.) and history/heritage sources (Wikipedia, Houshamadyan, Armenian Genocide Museum-Institute, academic portals)
 - **Reddit engagement analysis** — Collects top posts from target subreddits, extracts features (title structure, keywords, sentiment, posting time), and surfaces actionable patterns
 - **AI-informed post generation** — Creates Reddit post ideas modelled after high-engagement patterns
 - **Approval workflow** — Review, edit, approve, or reject generated ideas via a web dashboard
@@ -91,7 +91,7 @@ Hye-tasion/
 │   │   └── ab_test.py        # ABTest, ABVariant, PostPerformance
 │   ├── scrapers/
 │   │   ├── base_scraper.py   # Abstract scraper with retry logic
-│   │   ├── armenian_news.py  # RSS scrapers for 9 Armenian news outlets
+│   │   ├── armenian_news.py  # RSS scrapers for 14 Armenian news outlets
 │   │   ├── history_journals.py # Wikipedia, academic, on-this-day scrapers
 │   │   └── scraping_service.py # Orchestrates scrape runs
 │   ├── analysis/
@@ -112,6 +112,6 @@ Edit `config.yaml` to add/remove scraping sources, adjust Reddit analysis parame
 
 Key settings in `.env`:
 - `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET` — Reddit API credentials
-- `TARGET_SUBREDDIT` — The subreddit to post to (default: `armenia`)
-- `ANALYSIS_SUBREDDITS` — Comma-separated list of subreddits to analyze for engagement patterns
+- `TARGET_SUBREDDIT` — The subreddit to post to (default: `ArmeniansGlobal`)
+- `ANALYSIS_SUBREDDITS` — Comma-separated list of subreddits to analyze for engagement patterns (default includes `ArmeniansGlobal,armenia,hayastan,...`)
 - `SCRAPE_INTERVAL_MINUTES` — How often to auto-scrape (default: 60)
