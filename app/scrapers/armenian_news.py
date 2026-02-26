@@ -1,7 +1,8 @@
 """
 Scrapers for Armenian news media sources.
 Covers: Armenpress, Asbarez, Armenian Weekly, Azatutyun, Hetq,
-        Panorama.am, EVN Report, OC Media, Civilnet.
+        Panorama.am, EVN Report, OC Media, Civilnet,
+        Massis Post, Armenian Mirror-Spectator, Horizon Weekly, Agos.
 """
 import logging
 from datetime import datetime, timezone
@@ -187,10 +188,55 @@ class CivilnetScraper(RSSNewsScraper):
 
 
 # ---------------------------------------------------------------------------
+# Diaspora sources
+# ---------------------------------------------------------------------------
+
+class MassisPostScraper(RSSNewsScraper):
+    """Massis Post — Los Angeles-based Armenian diaspora news."""
+    SOURCE_NAME = "Massis Post"
+    BASE_URL = "https://massispost.com"
+    RSS_URL = "https://massispost.com/feed/"
+
+    def __init__(self):
+        super().__init__(self.SOURCE_NAME, self.BASE_URL, self.RSS_URL, "diaspora")
+
+
+class MirrorSpectatorScraper(RSSNewsScraper):
+    """Armenian Mirror-Spectator — Boston/Watertown, oldest Armenian weekly in the US."""
+    SOURCE_NAME = "Armenian Mirror-Spectator"
+    BASE_URL = "https://mirrorspectator.com"
+    RSS_URL = "https://mirrorspectator.com/feed/"
+
+    def __init__(self):
+        super().__init__(self.SOURCE_NAME, self.BASE_URL, self.RSS_URL, "diaspora")
+
+
+class HorizonWeeklyScraper(RSSNewsScraper):
+    """Horizon Weekly — Canada's ARF Armenian weekly publication."""
+    SOURCE_NAME = "Horizon Weekly"
+    BASE_URL = "https://horizonweekly.ca"
+    RSS_URL = "https://horizonweekly.ca/feed/"
+
+    def __init__(self):
+        super().__init__(self.SOURCE_NAME, self.BASE_URL, self.RSS_URL, "diaspora")
+
+
+class AgosScraper(RSSNewsScraper):
+    """Agos — Istanbul Armenian bilingual newspaper (English section)."""
+    SOURCE_NAME = "Agos"
+    BASE_URL = "https://www.agos.com.tr/en"
+    RSS_URL = "https://www.agos.com.tr/en/rss"
+
+    def __init__(self):
+        super().__init__(self.SOURCE_NAME, self.BASE_URL, self.RSS_URL, "diaspora")
+
+
+# ---------------------------------------------------------------------------
 # Registry — used by the scraping service to iterate all news sources
 # ---------------------------------------------------------------------------
 
 ALL_NEWS_SCRAPERS = [
+    # Armenia-based
     ArmenPressScraper,
     AsbarezScraper,
     ArmenianWeeklyScraper,
@@ -200,4 +246,9 @@ ALL_NEWS_SCRAPERS = [
     EVNReportScraper,
     OCMediaScraper,
     CivilnetScraper,
+    # Diaspora
+    MassisPostScraper,
+    MirrorSpectatorScraper,
+    HorizonWeeklyScraper,
+    AgosScraper,
 ]
