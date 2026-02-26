@@ -41,6 +41,27 @@ scraping:
       rss: "https://oc-media.org/feed/"
       type: rss
       category: news
+    # Diaspora sources
+    - name: "Massis Post"
+      url: "https://massispost.com"
+      rss: "https://massispost.com/feed/"
+      type: rss
+      category: diaspora
+    - name: "Armenian Mirror-Spectator"
+      url: "https://mirrorspectator.com"
+      rss: "https://mirrorspectator.com/feed/"
+      type: rss
+      category: diaspora
+    - name: "Horizon Weekly"
+      url: "https://horizonweekly.ca"
+      rss: "https://horizonweekly.ca/feed/"
+      type: rss
+      category: diaspora
+    - name: "Agos"
+      url: "https://www.agos.com.tr/en"
+      rss: "https://www.agos.com.tr/en/rss"
+      type: rss
+      category: diaspora
 
   # History & academic sources
   history_sources:
