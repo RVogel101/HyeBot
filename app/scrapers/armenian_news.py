@@ -22,10 +22,7 @@ def _parse_rss_date(date_str: str) -> Optional[datetime]:
     try:
         return parsedate_to_datetime(date_str)
     except Exception:
-        try:
-            return datetime(*feedparser._parse_date(date_str)[:6], tzinfo=timezone.utc)
-        except Exception:
-            return None
+        return None
 
 
 class RSSNewsScraper(BaseScraper):
@@ -49,24 +46,26 @@ class RSSNewsScraper(BaseScraper):
 
         articles: list[ScrapedArticle] = []
         for entry in feed.entries:
-            title = entry.get("title", "").strip()
-            url = entry.get("link", "").strip()
+            # feedparser may return lists for some fields; coerce to str first
+            title = str(entry.get("title", "")).strip()
+            url = str(entry.get("link", "")).strip()
             if not title or not url:
                 continue
 
-            summary = self.clean_text(
-                entry.get("summary", entry.get("description", ""))
-            )
+            summary = str(entry.get("summary", entry.get("description", "")))
+            summary = self.clean_text(summary)
             # Strip HTML tags from summary
             from bs4 import BeautifulSoup
             summary = BeautifulSoup(summary, "lxml").get_text(separator=" ")
             summary = self.clean_text(summary)
 
             published_at = _parse_rss_date(
-                entry.get("published", entry.get("updated", ""))
+                str(entry.get("published", entry.get("updated", "")) or "")
             )
 
-            tags = [t.get("term", "") for t in entry.get("tags", []) if t.get("term")]
+            # entry.get may return None; ensure we have a list before iterating
+            raw_tags = entry.get("tags") or []
+            tags = [str(t.get("term", "")) for t in raw_tags if t and t.get("term")]
 
             articles.append(
                 ScrapedArticle(
