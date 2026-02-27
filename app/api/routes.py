@@ -28,7 +28,7 @@ from app.ab_testing.ab_framework import (
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-TARGET_SUBREDDIT = os.getenv("TARGET_SUBREDDIT", "armenia")
+TARGET_SUBREDDIT = os.getenv("TARGET_SUBREDDIT", "ArmeniansGlobal")
 
 
 # ─── Pydantic schemas ──────────────────────────────────────────────────────────
