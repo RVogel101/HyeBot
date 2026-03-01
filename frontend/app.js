@@ -4,6 +4,11 @@
 
 const API = "/api";
 
+// API key — set via the browser console: localStorage.setItem("hyebot_api_key", "your-key")
+function getApiKey() {
+  return localStorage.getItem("hyebot_api_key") || "";
+}
+
 // ─── Tab navigation ──────────────────────────────────────────────────────────
 document.querySelectorAll(".nav-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -28,7 +33,11 @@ document.querySelectorAll(".nav-btn").forEach((btn) => {
 async function api(path, opts = {}) {
   const url = API + path;
   const res = await fetch(url, {
-    headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": getApiKey(),
+      ...(opts.headers || {}),
+    },
     ...opts,
   });
   if (!res.ok) {
