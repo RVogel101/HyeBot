@@ -258,14 +258,26 @@ def refresh_post_performance(db: Session, reddit_post_id: str) -> Optional[PostP
 
         if perf.first_checked_at is not None:
             elapsed_hours = (now - perf.first_checked_at).total_seconds() / 3600
-            if elapsed_hours < 2:
-                perf.score_at_1h = submission.score  # type: ignore[assignment]
-            elif elapsed_hours < 8:
-                perf.score_at_6h = submission.score  # type: ignore[assignment]
-            elif elapsed_hours < 48:
-                perf.score_at_24h = submission.score  # type: ignore[assignment]
+
+            # Fill the most recent applicable bucket that hasn't been set yet.
+            # Buckets: 1h, 2h, 4h, 6h, 12h, 24h, 48h, 7d
+            buckets: list[tuple[float, str]] = [
+                (1.5,  "score_at_1h"),
+                (3.0,  "score_at_2h"),
+                (5.0,  "score_at_4h"),
+                (9.0,  "score_at_6h"),
+                (18.0, "score_at_12h"),
+                (36.0, "score_at_24h"),
+                (72.0, "score_at_48h"),
+            ]
+            for threshold, attr in buckets:
+                if elapsed_hours < threshold and getattr(perf, attr) is None:
+                    setattr(perf, attr, submission.score)
+                    break
             else:
-                perf.score_at_7d = submission.score  # type: ignore[assignment]
+                # Past 72 h → final / 7d bucket
+                if perf.score_at_7d is None or elapsed_hours >= 168:
+                    perf.score_at_7d = submission.score  # type: ignore[assignment]
                 perf.final_score = submission.score  # type: ignore[assignment]
                 perf.final_comments = submission.num_comments  # type: ignore[assignment]
                 perf.final_upvote_ratio = submission.upvote_ratio  # type: ignore[assignment]
